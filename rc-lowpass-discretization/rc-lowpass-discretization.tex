@@ -220,36 +220,27 @@ Take $t_0$ to be the time of the previous time step, that is $t_0 = t - T$
 Discretizing the current/voltage relation for time $t$, first substitute
 $t$ and $T$ into the current/voltage relation (\ref{eqn:V_C_t}) from the previous section:
 
-\begin{equation}
-\begin{aligned}
-V_C(t) &= V_C(t_0) + \frac{1}{C}\int_{t_0}^{t} \! I_C(\tau) \, \mathrm{d}\tau &\hspace{.25\textwidth} &\text{(from equation \ref{eqn:V_C_t})}\\
-\label{eqn:V_C_t_a}
-       &= V_C(t-T) + \frac{1}{C}\int_{t_0}^{t} \! I_C(\tau) \, \mathrm{d}\tau &&\text{($t_0 = t - T$)}
-\end{aligned}
-\end{equation}
-
-Now the key step, we apply the trapezoidal rule to discretize the integral.
-
 \begin{align}
+V_C(t) &= V_C(t_0) + \frac{1}{C}\int_{t_0}^{t} \! I_C(\tau) \, \mathrm{d}\tau &\text{(from equation \ref{eqn:V_C_t})}\\
+\label{eqn:V_C_t_a}
+       &= V_C(t-T) + \frac{1}{C}\int_{t_0}^{t} \! I_C(\tau) \, \mathrm{d}\tau &\text{($t_0 = t - T$)}
 \intertext{
-	The trapezoidal rule states:\footnote{
-		\href{https://en.wikipedia.org/wiki/Trapezoidal_rule}{Trapeziodal rule} (also \href{http://www.mathwords.com/t/trapezoid_rule.htm}{see here}):
-	}
+Now the key step, we apply the trapezoidal rule to discretize the integral. The trapezoidal rule states:\footnotemark
 }
 \label{eqn:trap-rule}
 \int_a^b \! f(x) \, mathrm{d}x &\approx (b-a)\frac{(f(a) + f(b))}{2} \\
 \intertext{
 	We will approximate the following integral:
 }
-\frac{1}{C}\int_{t_0}^{t} \! I_C(\tau) \, \mathrm{d}\tau &\approx ? \\
+\frac{1}{C}\int_{t_0}^{t} \! I_C(\tau) \, \mathrm{d}\tau &\approx \, ? \\
 \intertext{
-	Applying the following substitutions to the trapazoidal rule (\ref{eqn:trap-rule}):
+	Making the following substitutions to the trapazoidal rule (\ref{eqn:trap-rule}):
 }
-f(x)&: I_C(x) \\
-a&: (t-T), \\
-b&: (t), \\
-(b-a) &= t-(t-T) = t-t+T \\
-\implies (b-a) &: T\\
+\notag f(x)&: I_C(x) \\
+\notag a&: (t-T), \\
+\notag b&: (t), \\
+\notag (b-a) &= t-(t-T) = t-t+T \\
+\notag \implies (b-a) &: T\\
 \intertext{
 	yeilds:
 }
@@ -260,6 +251,11 @@ b&: (t), \\
 \label{eqn:trap-V_C}
 V_C(t) &\approx V_C(t-T) + \frac{T}{2C} (I_C(t-T) + I_C(t))
 \end {align}
+\footnotetext{
+	Trapezoidal rule: 
+	\url{https://en.wikipedia.org/wiki/Trapezoidal_rule}
+	\url{http://www.mathwords.com/t/trapezoid_rule.htm}
+}
 
 The trapezoidal rule is an approximation, but we will treat equation \ref{eqn:trap-V_C} as an equivalent expression for $V_C$ from here on.
 
@@ -333,7 +329,7 @@ iceq[n] = -2*gc*vc[n] - iceq[n-1].
 Remember the differential equation that we didn't solve earlier? We're
 going to solve the equivalent linear equation. Instead of 
 $I_C = C\frac{\mathrm{d}}{\mathrm{d}t}V_C$
-we'll be using the linear approximation ($ic[n]$) that we just derived.
+we'll be using the linear approximation ($ic[n]$) derived in the previous section.
 
 Recall,
 
@@ -354,7 +350,7 @@ Equating current in and current out at our node of interest:
 
 \begin{equation}
 \begin{aligned}
-                   I_R &= I_C	 	&\text{(currents in and out of a node are equal)} \\
+                   I_R &= I_C	 	&\text{(KCL: currents in and out of a node are equal)} \\
                  ir[n] &= ic[n]	\hspace{.1\textwidth}& \\
 (1/R) (vin[n] - vc[n]) &= gc * vc[n] + iceq[n-1]
 \end{aligned}
@@ -367,7 +363,7 @@ Equating current in and current out at our node of interest:
 }
 
 
-Now the final step. Given our input $vin[n]$ we want to compute $vc[n]$
+Now the final step. Given our input $vin[n]$ we want to compute $vc[n]$.
 
 Solving the previous equation for $vc[n]$:
 
@@ -376,7 +372,7 @@ Solving the previous equation for $vc[n]$:
      (1/R) (vin[n] - vc[n]) &= gc * vc[n] + iceq[n-1] \\
 (1/R) * vin[n] - (1/R *) vc[n] - gc * vc[n] - iceq[n-1] &= 0 \\
 (1/R) * vin[n] - iceq[n-1] 	&= (1/R) * vc[n] + gc * vc[n] \\
-vin[n] - R * iceq[n-1] 		&= vc[n] + R * gc * vc[n]			&\text{(multiply by R)} \\
+vin[n] - R * iceq[n-1] 		&= vc[n] + R * gc * vc[n]			&\text{(*R)} \\
                             &= vc[n] * (1 + R*gc) \\
                   vc[n] 	&= (vin[n] - R * iceq[n-1]) / (1 + R*gc)
 \end{aligned}
