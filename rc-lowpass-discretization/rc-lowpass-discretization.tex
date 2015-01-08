@@ -5,6 +5,7 @@
 \usepackage{marginnote}
 \usepackage{mathtools}
 \usepackage{amsmath}
+\usepackage{amsfonts}
 \usepackage{empheq}
 \usepackage{listings}
 
@@ -20,7 +21,7 @@
 	\texttt{rossb@audiomulch.com}
 }
 
-\date{\today\footnote{An earlier version appeared as a Google document in July 2014. The current version is archived at \url{https://github.com/RossBencina/dsp-notes}. }}
+\date{\today\footnote{An earlier version appeared as a Google document in July 2014. The current version is archived at \url{https://github.com/RossBencina/dsp-notes} and may be revised from time to time. Corrections and bug reports are welcome. }}
 	
 \maketitle
 
@@ -29,16 +30,20 @@
 This note derives a digital version of an
 analog RC lowpass filter\footnote{\url{https://en.wikipedia.org/wiki/RC_circuit#Series_circuit}}
  using nodal analysis and trapezoidal integration.
-It follows the method applied by Andrew Simper in his recent technical notes.\footnote{See Simper's
-\href{http://www.cytomic.com/files/dsp/OnePoleLinearLowPass.pdf}{worked example of a one pole lowpass filter} and his other technical papers located at
+It follows the method used by Andrew Simper in his recent technical notes.\footnote{See Simper's
+\href{http://www.cytomic.com/files/dsp/OnePoleLinearLowPass.pdf}{``Direct Numerical Integration of a One Pole Linear Low Pass Filter''} and other technical papers located at
 \url{http://www.cytomic.com/technical-papers}.}
-The aim is to lay out the mathematical steps that underpin the method.
+The aim is to lay out the mathematical steps that underpin the method, more or less from first principles.
+It's a first step towards modelling analog circuits using numerical methods.
 
 Some knowledge of calculus and a little familiarity with linear circuits is assumed (e.g. application of Ohm's Law and Kirchoff's Laws to form nodal equations). Familiarity with digital IIR filters is also assumed (i.e. the idea of a digital filter with state variables and a state update procedure that computes an output sample from an input sample at each time step).
 
 \section{The circuit}
 
 The analog RC lowpass circuit is shown in Figure \ref{fig:RC-lowpass-circuit}.
+$R$ is the resistance of the resistor. $C$ is the capacitance of the capacitor.
+Our goal is to create a discrete time digital implementation of this circuit.
+We want a program that takes voltage $V_{in}$ at each time step and gives us $V_{C}$.
 
 \begin{figure}[here]
 	\centering
@@ -48,28 +53,25 @@ The analog RC lowpass circuit is shown in Figure \ref{fig:RC-lowpass-circuit}.
 	\label{fig:RC-lowpass-circuit}
 \end{figure}
 
-$R$ is the resistance of the resistor.
-$C$ is the capacitance of the capacitor.
-
-Our goal is to create a discrete time digital implementation of this circuit.
-We want a program that takes $V_{in}$ at each time step and gives us $V_{C}$.
-The process of deriving the program involves solving equations for
-the circuit using Ohm's Law and Kirchoff's laws. This process is called nodal analysis.\footnote{\url{http://en.wikipedia.org/wiki/Nodal_analysis}}
-
 
 \section{Voltages across the components}
 
-We assume that electron current flows in the direction of the arrows.\footnote{For our method to succeed, the direction of the arrows doesn't matter so long as they are kept consistent for the whole calculation. See for example \href{https://www.physicsforums.com/threads/node-voltage-analysis.246884/}{this discussion at physicsforums.com}.}
-Applying the formula ($V_{highest} - V_{lowest}$) for the votage across a component yeilds the following expressions for the voltages across the resistor and capacitor:
+The process of deriving the digital implementation involves solving equations for
+the circuit using Ohm's Law and Kirchoff's laws. This process is called nodal analysis.\footnote{\url{http://en.wikipedia.org/wiki/Nodal_analysis}}
 
-\begin{equation}
-V_R = V_{in} - V_C
-\end{equation}
+We apply the node voltage method\footnote{\url{http://en.wikipedia.org/wiki/Nodal_analysis}} to produce an equation for the voltage across the resistor ($V_R$). The voltage across the capacitor $V_C$ is an unknown that we will solve for later.
 
-\begin{equation}
-V_C = V_C - V_0
-\end{equation}
+Assume that electron current flows in the direction of the arrows.\footnote{For our method to succeed, the direction of the arrows doesn't matter so long as they are kept consistent for the whole calculation. See for example \href{https://www.physicsforums.com/threads/node-voltage-analysis.246884/}{this discussion at physicsforums.com}.}
+Applying the formula ($V_{highest} - V_{lowest}$) for the voltage across a component yields $V_R$ as follows:
 
+\begin{align}
+V_1 &= V_0 + V_{in}\\
+V_2 &= V_0 + V_C\\
+V_R &= V_1 - V_2\\
+\implies V_R &= (V_0 + V_{in}) - (V_0 + V_C)\\
+\label{eqn:V_R}
+\implies V_R &= V_{in} - V_C
+\end{align}
 
 \section{Current flow for each component}
 
@@ -84,13 +86,13 @@ Recall Ohm's Law for a general resistor:
 	I=\frac{V}{R}
 }
 
-This gives us the current through the resistor:
+Using the equation for $V_R$ from above (\ref{eqn:V_R}) gives us the current through the resistor:
 
-\begin{equation}
+\begin{align}
+I_R &= \frac{1}{R}V_R\\
 \label{eqn:I_R1}
-I_R = \frac{1}{R}(V_{in} - V_C)
-\end{equation}
-
+\implies I_R &= \frac{1}{R}(V_{in} - V_C)
+\end{align}
 
 The equivalent law for capacitors is:\footnote{\url{https://en.wikipedia.org/wiki/Capacitor#Current.E2.80.93voltage_relation}}
 
@@ -106,11 +108,11 @@ I_C = C\frac{\mathrm{d}}{\mathrm{d}t}V_C
 \end{equation}
 
 
-\section{Not forming a differential equation for the circuit}
+\section{A differential equation for the circuit \label{sec:diff-eqn}}
 
 Kirchoff's current law (KCL)\footnote{\url{https://en.wikipedia.org/wiki/Kirchhoff's_circuit_laws}}
 tells us that the sum of currents into a node
-equals the sum of currents out of the node. For node $V_{C}$ this yields
+equals the sum of currents out of the node. For node $V_2$ this yields
 
 \begin{equation}
 I_R = I_C
@@ -123,11 +125,10 @@ Substituting the expressions above for $I_R$ (\ref{eqn:I_R1}) and $I_C$ (\ref{eq
 \label{eqn:nodal-equation}
 \end{equation}
 
-Our goal is to solve equation \ref{eqn:nodal-equation} for $V_C$ (the circuit output) given $V_{in}$ (the
-circuit input) at each time step. Note that we are not going to try
-to solve the above differential equation. Instead we discretize
+Our goal is to produce a numerical solution to equation \ref{eqn:nodal-equation} for $V_C$ (the circuit output) given $V_{in}$ (the
+circuit input) at each time step. To do this we discretize
 (approximate) the capacitor using a linear approximation and then
-expand the KCL equations using the discretized expressions for $I_C$.
+expand the KCL equations using the discretized expression for $I_C$.
 
 \section{Aside: current-voltage relation for a capacitor}
 
@@ -167,9 +168,7 @@ rearranging and making time an explicit parameter \tau:
 \frac{\mathrm{d}}{\mathrm{d}t}V_C(\tau) &= \frac{1}{C}I_C(\tau) &\hspace{.25\textwidth}
 \\
 \intertext{
-Integrating both sides from $t_0$ to $t$:\footnote{
-		See: \url{http://www.site.uottawa.ca/mathasatool/01unit/12topic/focus/voltage_current/p09.htm}
-	}
+Integrating both sides from $t_0$ to $t$:\footnotemark
 }
 \notag
 \int_{t_0}^{t} \! \frac{\mathrm{d}}{\mathrm{d}t}V_C(\tau) \, \mathrm{d}\tau
@@ -191,20 +190,21 @@ V_C(t)
 &=
 V_C(t_0) + \frac{1}{C}\int_{t_0}^{t} \! I_C(\tau) \, \mathrm{d}\tau
 \end{align}
-
+\footnotetext{
+	See: \url{http://www.site.uottawa.ca/mathasatool/01unit/12topic/focus/voltage_current/p09.htm}
+}
 
 Notice that given two times $t_0$ and $t$, 
 equation \ref{eqn:V_C_t} gives us a way to compute $V_C(t)$ as a function of
-$V_C(T_0)$ and a definite integral over $I_C$ from time $t_0$ to
+$V_C(t_0)$ and a definite integral over $I_C$ from time $t_0$ to
 time $t$.
 
 
 \section{Discretizing a capacitor using the trapezoidal rule}
 
 In the previous section we derived a general time-domain relation (equation \ref{eqn:V_C_t}) for
-the capacitor current and voltage in terms of voltage at times
-$t_0$ and $t$, and a definite integral of the current from $t_0$ to $t$.
-We're going to use the general relation to derive a time-step update
+the capacitor currents and voltages at times $t_0$ and $t$.
+We'll use the general relation to derive a time-step update
 rule (difference equations) for our uniformly sampled (digital) system.
 The update rule takes us from the previous time step to the current time
 step.
@@ -218,19 +218,19 @@ Let $t$ be the time of the current time step
 Take $t_0$ to be the time of the previous time step, that is $t_0 = t - T$
 
 Discretizing the current/voltage relation for time $t$, first substitute
-$t$ and $T$ into the current/voltage relation (\ref{eqn:V_C_t}) from the previous section:
+$t$ and $T$ into equation \ref{eqn:V_C_t} from the previous section:
 
 \begin{align}
 V_C(t) &= V_C(t_0) + \frac{1}{C}\int_{t_0}^{t} \! I_C(\tau) \, \mathrm{d}\tau &\text{(from equation \ref{eqn:V_C_t})}\\
 \label{eqn:V_C_t_a}
        &= V_C(t-T) + \frac{1}{C}\int_{t_0}^{t} \! I_C(\tau) \, \mathrm{d}\tau &\text{($t_0 = t - T$)}
 \intertext{
-Now the key step, we apply the trapezoidal rule to discretize the integral. The trapezoidal rule states:\footnotemark
+Now we apply the trapezoidal rule to discretize the integral. The trapezoidal rule states:\footnotemark
 }
 \label{eqn:trap-rule}
-\int_a^b \! f(x) \, mathrm{d}x &\approx (b-a)\frac{(f(a) + f(b))}{2} \\
+\int_a^b \! f(x) \, \mathrm{d}x &\approx (b-a)\frac{(f(a) + f(b))}{2} \\
 \intertext{
-	We will approximate the following integral:
+	We will use the trapezoidal rule to approximate the following integral:
 }
 \frac{1}{C}\int_{t_0}^{t} \! I_C(\tau) \, \mathrm{d}\tau &\approx \, ? \\
 \intertext{
@@ -259,10 +259,8 @@ V_C(t) &\approx V_C(t-T) + \frac{T}{2C} (I_C(t-T) + I_C(t))
 
 The trapezoidal rule is an approximation, but we will treat equation \ref{eqn:trap-V_C} as an equivalent expression for $V_C$ from here on.
 
-Let's switch our notation to the discrete time domain and to something
-more closely resembling computer code.
-Take $n$ as the current time step and $n-1$ as the previous time step.
-We'll also explicitly notate multiplication using $*$ from now on.
+Let's switch our notation to the discrete time domain and to something more closely resembling computer code. We'll notate multiplication with ``$.$''.
+Take $n \in \mathbb{Z}$ as the current time step and $n-1$ as the previous time step.
 Switch notation as follows:
 
 \begin{align*}
@@ -276,26 +274,22 @@ Rewriting the trapezoidally integrated equation for $V_C$ (\ref{eqn:trap-V_C}):
 
 \begin{equation}
 \label{eqn:trap-V_C-discrete}
-vc[n] = vc[n-1] + T/(2C) * ( ic[n-1] + ic[n] )
+vc[n] = vc[n-1] + T/(2C) . ( ic[n-1] + ic[n] )
 \end{equation}
 
 Later, when applying KCL we will want an expression for $ic[n]$. So,
-	solving equation \ref{eqn:trap-V_C-discrete} for $ic[n]$:
+	solve equation \ref{eqn:trap-V_C-discrete} for $ic[n]$:
+
+\begin{align}
+\implies &vc[n] - vc[n-1] = T/(2C) . ic[n-1] + T/(2C) . ic[n] \notag\\
+\implies &vc[n] - vc[n-1] - T/(2C) . ic[n-1] = T/(2C) . ic[n] \notag\\
+\implies &ic[n] = (2C)/T . (vc[n] - vc[n-1]) - ic[n-1]
+\end{align}
+
+Letting $gc = (2C)/T$:
 
 \begin{equation}
-vc[n] - vc[n-1] = T/(2C) * ic[n-1] + T/(2C) *  ic[n]
-\end{equation}
-\begin{equation}
-vc[n] - vc[n-1] - T/(2C) * ic[n-1] = T/(2C) * ic[n]
-\end{equation}
-\begin{equation}
-ic[n] = T/(2C) * (vc[n] - vc[n-1]) - ic[n-1]
-\end{equation}
-
-Letting $gc = T/(2C)$ gives:
-
-\begin{equation}
-ic[n] = gc * vc[n] + (- gc vc[n-1] - ic[n-1])
+ic[n] = gc . vc[n] + (- gc . vc[n-1] - ic[n-1])
 \end{equation}
 
 Following a convention used by QUCS using ``iceq'':\footnote{
@@ -304,45 +298,44 @@ Following a convention used by QUCS using ``iceq'':\footnote{
 Let
 
 \begin{eqnarray} \begin{array}{l}
-iceq[n-1] = - gc * vc[n-1] - ic[n-1]\\
-ic[n] = gc * vc[n] + iceq[n-1].
+iceq[n-1] = - gc . vc[n-1] - ic[n-1]\\
+ic[n] = gc . vc[n] + iceq[n-1].
 \end{array} \end{eqnarray}
 
 Or equivalently:
 
 \begin{eqnarray} \begin{array}{l}
-ic[n] = gc * vc[n] + iceq[n-1]\\
-iceq[n] = - gc vc[n] - ic[n].
+\label{eqn:ic_n}
+ic[n] = gc . vc[n] + iceq[n-1]\\
+iceq[n] = - gc . vc[n] - ic[n].
 \end{array} \end{eqnarray}
 
 We can further simplify $iceq$ by substituting for $ic[n]$
 
-\begin{eqnarray} \begin{array}{l}
-iceq[n] = - gc*vc[n] - ic[n]\\
-iceq[n] = - gc*vc[n] - (gc * vc[n] + iceq[n-1])\\
-iceq[n] = -2*gc*vc[n] - iceq[n-1].
-\end{array} \end{eqnarray}
+\begin{align}
+&iceq[n] = - gc . vc[n] - ic[n] \notag\\
+\implies &iceq[n] = - gc . vc[n] - (gc . vc[n] + iceq[n-1])\notag\\
+\implies &iceq[n] = -2 . gc . vc[n] - iceq[n-1].
+\end{align}
 
 
 \section{Solving the KCL equation(s) using the linear equivalent capacitor current}
 
-Remember the differential equation that we didn't solve earlier? We're
-going to solve the equivalent linear equation. Instead of 
+Remember the differential equation from section \ref{sec:diff-eqn}?
+We're ready to solve the equivalent linear equation. Instead of 
 $I_C = C\frac{\mathrm{d}}{\mathrm{d}t}V_C$
-we'll be using the linear approximation ($ic[n]$) derived in the previous section.
+we'll be using the linear approximation $ic[n]$ derived in the previous section (\ref{eqn:ic_n}).
 
 Recall,
 
 \begin{equation}
-gc = 2C/T
-\end{equation}
-
-\begin{equation}
 \begin{aligned}
 		   I_R &= (1/R) (V_{in} - V_C)	 	&\text{(current through the resistor)} \\
-\to	     ir[n] &= (1/R) (vin[n] - vc[n])    \hspace{.1\textwidth}& \\
+\to	     ir[n] &= (1/R) . (vin[n] - vc[n])\\
 \\
-	     ic[n] &= gc * vc[n] + iceq[n-1]    &\text{(current ``through'' the capacitor)}
+	      	gc &= (2C)/T \hspace{.1\textwidth}& \\
+	      	iceq[n] &= -2 . gc . vc[n] - iceq[n-1] \\
+	     ic[n] &= gc . vc[n] + iceq[n-1]    &\text{(current ``through'' the capacitor)}
 \end{aligned}
 \end{equation}
 
@@ -351,8 +344,8 @@ Equating current in and current out at our node of interest:
 \begin{equation}
 \begin{aligned}
                    I_R &= I_C	 	&\text{(KCL: currents in and out of a node are equal)} \\
-                 ir[n] &= ic[n]	\hspace{.1\textwidth}& \\
-(1/R) (vin[n] - vc[n]) &= gc * vc[n] + iceq[n-1]
+\to                 ir[n] &= ic[n]	\hspace{.1\textwidth}& \\
+\implies (1/R) . (vin[n] - vc[n]) &= gc . vc[n] + iceq[n-1] &
 \end{aligned}
 \end{equation}
 
@@ -369,60 +362,62 @@ Solving the previous equation for $vc[n]$:
 
 \begin{equation}
 \begin{aligned}
-     (1/R) (vin[n] - vc[n]) &= gc * vc[n] + iceq[n-1] \\
-(1/R) * vin[n] - (1/R *) vc[n] - gc * vc[n] - iceq[n-1] &= 0 \\
-(1/R) * vin[n] - iceq[n-1] 	&= (1/R) * vc[n] + gc * vc[n] \\
-vin[n] - R * iceq[n-1] 		&= vc[n] + R * gc * vc[n]			&\text{(*R)} \\
-                            &= vc[n] * (1 + R*gc) \\
-                  vc[n] 	&= (vin[n] - R * iceq[n-1]) / (1 + R*gc)
+     (1/R) . (vin[n] - vc[n]) &= gc . vc[n] + iceq[n-1] \\
+\implies (1/R) . vin[n] - (1/R) . vc[n] - gc . vc[n] - iceq[n-1] &= 0 \\
+\implies (1/R) . vin[n] - iceq[n-1] 	&= (1/R) . vc[n] + gc . vc[n] \\
+\implies vin[n] - R . iceq[n-1] 		&= vc[n] + R . gc . vc[n]			&\text{(times R)} \\
+                            &= vc[n] . (1 + R.gc) \\
+\implies                   vc[n] 	&= (vin[n] - R . iceq[n-1]) / (1 + R.gc)
 \end{aligned}
 \end{equation}
 
-So our final equations in pseudo-code form are:
+So our final equations are:
 
-\begin{lstlisting}
-init:
-    T = 1 / sr
-    gc = T/(2C)
-    iceq = 0
+\begin{align}
+ gc = (2C)/T\\
+ vc[n] &= (vin[n] - R . iceq[n-1]) / (1 + R.gc)\\
+ iceq[n] &= (- 2.gc.vc[n] - iceq[n-1])
+\end{align}
 
-step:
-    vc[n] = (vin[n] - R * iceq[n-1]) / (1 + R*gc)
-    iceq[n] = (- 2*gc*vc[n] - iceq[n-1]).
-\end{lstlisting}
+or, letting $gr = 1/R$
 
-or, letting gr = 1/R
-
-\begin{lstlisting}
-step:
-    vc[n] = (gr * vin[n] - iceq[n-1]) / (gr + gc)
-    iceq[n] = (- 2*gc*vc[n] - iceq[n-1])
-\end{lstlisting}
+\begin{align}
+vc[n] &= (gr . vin[n] - iceq[n-1]) / (gr + gc)\\
+iceq[n] &= (- 2.gc.vc[n] - iceq[n-1])
+\end{align}
 
 Or equivalently:
 
+\begin{align}
+vc[n] &= (gr . vin[n] + iceq[n-1]) / (gr + gc)\\
+iceq[n] &= 2.gc*vc[n] - iceq[n-1]
+\end{align}
+
+Andrew Simper suggests setting $gc=1$, $gr=g$
+
+\begin{align}
+vc[n] &= (g . vin[n] + iceq[n-1]) / (1 + g)\\
+iceq[n] &= 2.vc[n] - iceq[n-1]
+\end{align}
+
+In pseudo-code:
+
 \begin{lstlisting}
-step:
-    vc[n] = (gr * vin[n] + iceq[n-1]) / (gr + gc)
-    iceq[n] = 2*gc*vc[n] - iceq[n-1]
+init:
+    iceq = 0
+
+step (input: vin, output: vc):
+    vc = (g * vin + iceq) / (1 + g)
+    iceq = 2 * vc - iceq
 \end{lstlisting}
 
-Andrew Simper suggests setting gc=1, gr=g
-
-\begin{lstlisting}
-step:
-    vc[n] = (g * vin[n] + iceq[n-1]) / (1 + g)
-    iceq[n] = 2*vc[n] - iceq[n-1]
-\end{lstlisting}
 
 
 \section{Acknowledgements}
 
-The method described here is an interpretation of
-{\href{http://www.google.com/url?q=http\%3A\%2F\%2Fwww.cytomic.com\%2Ffiles\%2Fdsp\%2FOnePoleLinearLowPass.pdf\&sa=D\&sntz=1\&usg=AFQjCNFFyauZI4XmAtL0x26dzTBQzY-GXQ}{Andrew
-		Simper's worked example here}}{, and in
-}{\href{http://www.google.com/url?q=http\%3A\%2F\%2Fwww.cytomic.com\%2Ftechnical-papers\&sa=D\&sntz=1\&usg=AFQjCNGwKW2UyEgVuFPUWhxGkyl0Cq9VLA}{his
-	related papers here}}{. Thanks to Andrew and other members of the
+The method described here is an interpretation of Andrew Simper's worked example,\footnote{\url{http://www.cytomic.com/files/dsp/OnePoleLinearLowPass.pdf}} 
+and his related papers.\footnote{\url{http://www.cytomic.com/technical-papers}} 
+Thanks to Andrew and other members of the
 \#musicdsp IRC channel for their very kind assistance in guiding me
 through this.
 
