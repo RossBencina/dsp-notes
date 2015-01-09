@@ -1,0 +1,918 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!-- saved from url=(0067)http://www.rossbencina.com/static/junk/SimperSVF_BIBO_Analysis.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>SimperSVF_BIBO_Analysis</title>
+  <meta name="generator" content="wxMaxima">
+  
+  <style type="text/css">
+body {
+  background-color: rgb(255,255,255);
+}
+.input {
+  color: rgb(0,0,255);
+}
+.comment {
+  color: rgb(0,0,0);
+  background-color: rgb(255,255,255);
+  padding: 2mm;
+}
+.image {
+  color: rgb(0,0,0);
+  padding: 2mm;
+}
+.section {
+  color: rgb(0,0,0);
+  font-size: 1.5em;
+  padding: 2mm;
+}
+.subsect {
+  color: rgb(0,0,0);
+  font-size: 1.2em;
+  padding: 2mm;
+}
+.title {
+  color: rgb(0,0,0);
+  font-size: 2em;
+  padding: 2mm;
+}
+.prompt {
+  color: rgb(255,0,0);
+}
+table {
+  border: 0px;
+}
+td {
+  vertical-align: top;
+  padding: 1mm;
+}
+  </style>
+ </head>
+ <body><div id="StayFocusd-infobar" style="display: none; top: 0px;">
+    <img src="chrome-extension://laankejkbhbdhmipfmgcngdelahlfoji/common/img/eye_19x19_red.png">
+    <span id="StayFocusd-infobar-msg"></span>
+    <span id="StayFocusd-infobar-links">
+        <a id="StayFocusd-infobar-never-show">hide forever</a>&nbsp;&nbsp;|&nbsp;&nbsp;
+        <a id="StayFocusd-infobar-hide">hide once</a>
+    </span>
+</div>
+
+<!---------------------------------------------------------->
+<!--          Created with wxMaxima version 11.08.0         -->
+<!---------------------------------------------------------->
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+Time-varying BIBO stability Analysis of Andrew Simper trapazoidal integrated SVF<br>
+Analysis by Ross Bencina [rossb@audiomulch.com]<br>
+<br>
+The filter:<br>
+<br>
+http://www.cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf<br>
+<br>
+The stability anaysis follows the method given by Jean Laroche in:<br>
+<br>
+Laroche, Jean. "On the Stability of Time-Varying Recursive Filters"<br>
+JAES Volume 55 Issue 6 pp. 460-471; June 2007 <br>
+http://www.aes.org/e-lib/browse.cfm?elib=14168<br>
+<br>
+This analysis was prepared using the following tools:<br>
+<br>
+wxMaxima: http://sourceforge.net/projects/wxmaxima/<br>
+Wolfram Alpha: http://www.wolframalpha.com/<br>
+Desmos graphing calculator: https://www.desmos.com/calculator
+</p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+INTRODUCTION<br>
+<br>
+The purpose of this analysis is to show that the above referenced filter is stable even when time-varying parameters k and g are varied at audio rate.<br>
+<br>
+You will need to read Laroche's paper for the background and the proofs of the results used here. I don't attempt to explain why the stability criteria are sufficient. Laroche gives a direct and easy to follow argument starting with the state-space representation of the filter.<br>
+<br>
+I make no claim to know what I'm doing. I'm still learning to perform this kind of mathematical analysis. I'd appreciate feedback on my method or if I've made an error. I'm happy to answer questions by email or on the music-dsp mailing list.
+</p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+TIME DOMAIN SCALAR FILTER ALGORITHM AS GIVEN BY ANDREW SIMPER<br>
+<br>
+This is the time-domain, scalar implementation of the trapazoidal integrated SVF.<br>
+This was copied directly from Andrew Simper's .pdf above, with some minor syntax changes for Maxima.<br>
+<br>
+We use these scalar equations to form the state transition matrix P in the next section.<br>
+<br>
+We perform all analysis in terms of the filter parameters g (a function of cutoff frequency) and k (a function of resonance/damping).<br>
+<br>
+Note that g&gt;0 and 0 &lt; k &lt;= 2. This is important for the analysis.<br>
+<br>
+We wish to show that the filter is time-varying BIBO stable for all valid values of g and k.
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i1) 
+  </span></td>
+  <td><span class="input">
+/*SVF "Final Algorithm" page 2-3. */<br>
+<br>
+/*<br>
+wc : %pi*cutoff/samplerate;<br>
+g : tan(wc);<br>
+k : 2-2*res; // k on (0,2) =&gt; 0=undamped<br>
+*/<br>
+<br>
+/* declarations not really used at this stage */<br>
+declare(g,[real,scalar,constant]);<br>
+assume( g &gt;= 0 );<br>
+declare(k,[real,scalar,constant]);<br>
+assume( k &gt; 0 );<br>
+assume( k &lt;= 2 );<br>
+<br>
+/* state variables */<br>
+declare(ic1eq,[real,scalar]);<br>
+declare(ic2eq,[real,scalar]);<br>
+<br>
+/* coefficients are functions of g and k */<br>
+a1 : 1/(1 + g*(g + k));<br>
+a2 : g*a1;<br>
+a3 : g*a2;
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_0.png">
+<p></p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i11) 
+  </span></td>
+  <td><span class="input">
+/* compute voltages for current timestep */<br>
+v3 : v0 - ic2eq;<br>
+v1 : a1*ic1eq + a2*v3;<br>
+v2 : ic2eq + a2*ic1eq + a3*v3;<br>
+<br>
+/* compute updated states. i've used _ to indicate the n+1 timestep */<br>
+ic1eq_ : 2*v1 - ic1eq;<br>
+ic2eq_ : 2*v2 - ic2eq;<br>
+<br>
+/* compute outputs.<br>
+it turns out the stability analysis only depends on <br>
+the state transition matrix P derived from the statements above,<br>
+but here are the output equations anyway: <br>
+*/<br>
+low : v2;<br>
+band : v1;<br>
+high : v0 - k*v1 - v2;<br>
+notch : v0 - k*v1;
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_1.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+So these are the expanded and simplified state update equations that compute the next filter states [ic1eq_,ic2eq_] from the current filter state [ic1eq,ic2eq], the input v0, and the parameters k and g.
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i20) 
+  </span></td>
+  <td><span class="input">
+fullratsimp(ic1eq_);
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_2.png">
+<p></p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i21) 
+  </span></td>
+  <td><span class="input">
+fullratsimp(ic2eq_);
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_3.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+We use these expressions in the next section to derive the state transition matrix P used for the stability analysis.
+</p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+STEP 1. DERIVE STATE TRANSITION MATRIX P FROM THE SCALAR IMPLEMENTATION ABOVE<br>
+<br>
+Laroche gives (in sec 1.2) a state-space representation of a time varying filter as:<br>
+<br>
+X_ = PX + Qx<br>
+y = RX + Sx<br>
+<br>
+Where x is the scalar input, y is the scalar output. <br>
+X is the filter state at the current time step. X_ is the updated state matrix in the n+1 time step. <br>
+P is the state transition matrix at the current time step. <br>
+<br>
+Note that although I've omitted time indices, all matricies and scalars are time varying and represent a value at the current time step only. Most importantly P represents all possible state transition matrices. Laroche distinguishes them with subscript m, so P[m] is the mth state transition matrix.<br>
+<br>
+It turns out that the stability analysis only needs state transition matrix P. We derive P from the scalar filter implementation given in the previous section. <br>
+<br>
+For reference, our state matrix X looks like this:
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i22) 
+  </span></td>
+  <td><span class="input">
+X: matrix([ic1eq],[ic2eq]);
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_4.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+Now, to create P we extract the individual cells for the state transition matrix from the scalar filter state update expressions ic1eq_ and ic2eq_;
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i23) 
+  </span></td>
+  <td><span class="input">
+/* ic1eq_ = X11*ic1eq + X12*ic2eq */<br>
+X11: ratsimp(subst([ic2eq=0,v0=0],ic1eq_)/ic1eq);<br>
+X12: ratsimp(subst([ic1eq=0,v0=0],ic1eq_)/ic2eq);<br>
+/* ic2eq_ = X21*ic1eq + X22*ic2eq */<br>
+X21: ratsimp(subst([ic2eq=0,v0=0],ic2eq_)/ic1eq);<br>
+X22: ratsimp(subst([ic1eq=0,v0=0],ic2eq_)/ic2eq);
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_5.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+Make P. Want X_ = PX, hence the top row of P computes ic1eq_, the second row computes ic2eq_
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i27) 
+  </span></td>
+  <td><span class="input">
+P: matrix([X11,X12],[X21,X22]);
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_6.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+Sanity: check that P.X gives our formulas for ic1eq_ and ic2eq_ back (modulo v0 terms)
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i28) 
+  </span></td>
+  <td><span class="input">
+P.X;
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_7.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+Sanity: check that (P.X - [original equations]) only has v0 terms
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i29) 
+  </span></td>
+  <td><span class="input">
+ratsimp((P.X)[1,1]-ic1eq_);<br>
+ratsimp((P.X)[2,1]-ic2eq_);
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_8.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+STEP 2. SHOW TIME INVARIANT STABILITY USING EIGENVALUES OF P<br>
+<br>
+Eigenvalues of P are not so interesting but we can use them to sanity check time-invariant stability.<br>
+<br>
+The magnitude of all eigenvalues should be less than 1 for the filter to be time-invariant stable. <br>
+This is equivalent to having the poles of the transfer function strictly inside the unit circle.<br>
+<br>
+e1, e2: eigenvalues of P
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i31) 
+  </span></td>
+  <td><span class="input">
+[e1,e2] : eigenvalues(P)[1];
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_9.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+me1, me2: complex magnitude of eigenvalues e1 and e2
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i32) 
+  </span></td>
+  <td><span class="input">
+domain:complex;<br>
+/* cabs() gives magnitude of each complex eigenvector */<br>
+[me1,me2] : cabs([e1,e2]);
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_10.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+Want: |e1| &lt; 1 and |e2| &lt; 1<br>
+i.e. me1 &lt; 1 and me2 &lt; 1
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i34) 
+  </span></td>
+  <td><span class="input">
+is(me1&lt;1 and me2&lt;1);
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_11.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+Maxima doesn't know. Wolfram Alpha says me1 and me2 are &lt; 1 for g&gt;0, k&gt;0. <br>
+<br>
+[[<br>
+&nbsp;Here are the Wolfram Alpha queries:<br>
+&nbsp;sqrt((g^2*abs(k^2-4)*sin(atan2(0,k^2-4)/2)^2)/(g*k+g^2+1)^2+(g*sqrt(abs(k^2-4))*cos(atan2(0,k^2-4)/2)+g^2-1)^2/(g*k+g^2+1)^2) &lt; 1; g&gt;0, k&gt;0<br>
+&nbsp;sqrt((g^2*abs(k^2-4)*sin(atan2(0,k^2-4)/2)^2)/(g*k+g^2+1)^2+(g*sqrt(abs(k^2-4))*cos(atan2(0,k^2-4)/2)-g^2+1)^2/(g*k+g^2+1)^2) &lt; 1; k&gt;0, g&gt;0<br>
+]]<br>
+<br>
+So the time-invariant filter is stable for all g&gt;0,k&gt;0 as expected.<br>
+<br>
++++
+</p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+STEP 3. SHOW TIME-VARYING BIBO STABILITY USING LAROCHE'S CRITERIA<br>
+<br>
+Laroche gives two sufficient criteria for time-varying BIBO stability. We try testing each in turn.<br>
+<br>
+Laroche's Time Varying BIBO Stability Criterion 1<br>
+-------------------------------------------------<br>
+<br>
+A restrictive but sufficient condition is given:<br>
+<br>
+"""<br>
+If there exists a real constant 0 &lt;= gamma &lt; 1 such that<br>
+<br>
+&nbsp;||P_m|| &lt;= gamma for all m<br>
+<br>
+then the corresponding time-varying filter is BIBO stable.<br>
+"""<br>
+<br>
+||.|| is the induced Euclidian norm a.k.a. the Spectral Norm of matrix P (Norm[P,2] in Mathematica).<br>
+The norm can be computed as the largest singular value, or as the positive square root of the largest eigenvalue of transpose(P).P.<br>
+We use the eigenvalue method to compute the norm here.<br>
+<br>
+In short, Criterion 1 requires that ||P|| &lt; 1 for all possible transition matrices P. <br>
+Or in terms of eigenvalues of P: sqrt(max(eigenvalues(transpose(P).P))) &lt; 1<br>
+<br>
+Note that Maxima appears to be unable to solve for max() across the eigenvalue expressions so we do that step manually with the help of Wolfram Alpha.<br>
+<br>
+We test Criterion 1 now.<br>
+<br>
+pe1, pe2: eigenvalues of P'P
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i35) 
+  </span></td>
+  <td><span class="input">
+[pe1,pe2] = factor(eigenvalues(transpose(P).P)[1]);
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_12.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+One of those eigenvalues is larger than the other.<br>
+<br>
+[[<br>
+&nbsp;Wolfram Alpha query to show that pe1 &lt; 1:<br>
+&nbsp;(g*k-g^2-1)^2/(g*k+g^2+1)^2 &lt; 1; g&gt;0, k&gt;0<br>
+]]<br>
+<br>
+pe1 &lt; 1 so the norm of P is sqrt(1)=1. The norm is not strictly less than 1. <br>
+<br>
+Therefore the filter does NOT fulfill Criterion 1.<br>
+<br>
++++
+</p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+Laroche's Time Varying BIBO Stability Criterion 2<br>
+-------------------------------------------------<br>
+<br>
+"""<br>
+If there exist a real constant 0 &lt;= gamma &lt; 1 and a constant nonsingular matrix T such that<br>
+<br>
+&nbsp;||TP_mT^-1|| &lt;= gamma for all m<br>
+<br>
+then the corresponding time-varying filter is BIBO stable.<br>
+"""<br>
+<br>
+According to Laroche's Criterion 2, any constant change of basis can be applied to P prior to computing the norm. <br>
+<br>
+So we want: ||TPT^-1|| &lt; 1. I'm not sure how to find a constant T that will reduce the norm of P for all k&gt;0, g&gt;0. It may not exist.<br>
+<br>
+I guessed a T that seems to work for g&gt;0, k&gt;1/10000. Reduce the top left entry to lower the limit on k arbitrarily close to 1 (not proved).<br>
+<br>
+T : constant non-singular change of basis matrix<br>
+Pa: P in new basis = TPT^-1<br>
+pae1, pae2: eigenvalues of Pa'Pa
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i36) 
+  </span></td>
+  <td><span class="input">
+T : matrix([1/10000,1],[1,0]); /* (this seems to work for k &gt; 1/10000) */<br>
+Pa : ratsimp(T.P.invert(T));<br>
+[pae1,pae2] : factor(sqrt(eigenvalues(transpose(Pa).Pa)))[1];
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_13.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+Rather than working directly with the eigenvalues to compute the norm we can show that the largest eigenvalue &lt; 1 using Laroche's method of inequalities on the trace and determinant of P. <br>
+<br>
+In summary, (from appendix 2 in the paper) we know from Linear Algebra:<br>
+<br>
+pae1+pae2=trace(Pa'Pa)=SIGMA<br>
+<br>
+pae1*pae2=det(Pa'Pa)=PI<br>
+<br>
+Now,<br>
+<br>
+pae1&lt;1 and pae2&lt;1 if and only if |PI| &lt; 1 and |SIGMA| &lt; 1 + |PI|<br>
+<br>
+Note: we show that SIGMA and PI are &gt;= 0 as we go so as to avoid needing to take absolute values in the final inequalities.<br>
+<br>
+SIGMA:
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i39) 
+  </span></td>
+  <td><span class="input">
+load(functs)$ /* needed for tracematrix */<br>
+SIGMA:factor(tracematrix(transpose(Pa).Pa));
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_14.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+Want: SIGMA &gt;= 0 so we can eliminate |.| in final inequality.<br>
+<br>
+SIGMA &gt;= 0 for all g&gt;0, k&gt;0<br>
+True.<br>
+<br>
+[[<br>
+&nbsp;Wolfram Alpha query:<br>
+&nbsp;(5000000100000000*g^2*k^2-4000000020000*g^2*k+5000000000000000*g^4+10000000400000001*g^2+5000000000000000)/(2500000000000000*(g*k+g^2+1)^2) &gt;= 0; g&gt;0, k&gt;0<br>
+]]<br>
+<br>
+(Note also that SIGMA blows up at k=(-g^2-1)/g. However that is outside our domain.)
+</p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+PI:
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i41) 
+  </span></td>
+  <td><span class="input">
+PI:factor(determinant(transpose(Pa).Pa));
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_15.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+Want: PI &gt;= 0 so we can eliminate |.| in the final inequality.<br>
+<br>
+PI &gt;= 0 for all g&gt;0, k&gt;0<br>
+True.<br>
+<br>
+[[<br>
+&nbsp;Wolfram Alpha query:<br>
+&nbsp;(g*k-g^2-1)^2/(g*k+g^2+1)^2 &gt;=0; g&gt;0, k&gt;0<br>
+]]
+</p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+To meet criterion 2, we need both eigenvalues of Pa'.Pa to be &lt; 1, which is implied by |PI| &lt; 1 amd |SIGMA| &lt; 1 + |PI|.<br>
+<br>
+Want: |PI| &lt; 1<br>
+<br>
+Since PI &gt;= 0 as shown above, want PI &lt; 1<br>
+True for all g&gt;0, k&gt;0.<br>
+<br>
+[[<br>
+&nbsp;Wolfram Alpha query:<br>
+&nbsp;(g*k-g^2-1)^2/(g*k+g^2+1)^2 &lt; 1; g&gt;0, k&gt;0<br>
+]]<br>
+<br>
+Want: |SIGMA| &lt; 1 + |PI|<br>
+<br>
+Since SIGMA &gt;=0 and PI &gt; 0<br>
+<br>
+=&gt; SIGMA &lt; 1 + PI<br>
+=&gt; SIGMA -1 -PI &lt; 0
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i42) 
+  </span></td>
+  <td><span class="input">
+factor(SIGMA - 1 - PI);<br>
+is( (SIGMA - 1 - PI) &lt; 0 );
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_16.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+SIGMA -1 -PI &lt; 0<br>
+True for:<br>
+g &gt; 0, 1/10000 &lt; k &lt; 400000001/10000<br>
+<br>
+[[<br>
+&nbsp;Wolfram Alpha query:<br>
+&nbsp;(g^2*(10000*k-400000001)*(10000*k-1))/(2500000000000000*(g*k+g^2+1)^2)&lt;0; g&gt;0, k&gt;0<br>
+]]<br>
+<br>
+The lower bound on k appears to be determined by the upper left entry in the change of basis matrix T. We can be moderately confident that a constant matrix T can be constructed such that Criterion 2 is met for all g&gt;0 and for k&gt;epsilon where epsilon is arbitrarily close to 0.<br>
+<br>
+Therefore, we have shown by rough means that the transition matrix P fulfills Laroche's Criterion 2 and hence is time-varying BIBO stable.<br>
+<br>
++++
+</p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+APPENDIX: SHOW THAT FILTER IS TIME-VARYING BIBO STABLE FOR UPDATE EVERY SECOND SAMPLE<br>
+<br>
+This approach was tried prior to finding a workable T above and is left here for completeness only. It shows that the filter meets Criterion 1 for update every second sample.<br>
+<br>
+Try looking at ||P^2|| since this would give BIBO stability changing every second sample.<br>
+<br>
+This is the method that Laroche uses to prove that the Normalized ladder is stable for update every second sample. See Appendix 2 in the Laroche paper.
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i44) 
+  </span></td>
+  <td><span class="input">
+P;<br>
+P2:P.P;<br>
+eigenvalues(transpose(P2).P2);
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_17.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+Using Laroche's method on determinant and trace to show that the eigenvalues of P^2 are &lt; 1.<br>
+<br>
+Rather than try to prove that the eigenvalues are &lt; 1 directly we use Laroche's method of inequalities on the determinant and trace.<br>
+We check that SIGMA and PI are &gt;= 0 as we go to avoid needing to take absolute values in the final inequality.
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i47) 
+  </span></td>
+  <td><span class="input">
+/* e1+e2=trace(P2.P2')=SIGMA */<br>
+SIGMA:factor(tracematrix(transpose(P2).P2));
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_18.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+SIGMA &gt;= 0 for g&gt;0, k&gt;0<br>
+True. So SIGMA = |SIGMA|<br>
+<br>
+[[<br>
+&nbsp;Wolfram Alpha query:<br>
+&nbsp;(2*(g^4*k^4+6*g^6*k^2-20*g^4*k^2+6*g^2*k^2+g^8+4*g^6+6*g^4+4*g^2+1))/(g*k+g^2+1)^4&gt;=0; g&gt;0, k&gt;0<br>
+]]
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i48) 
+  </span></td>
+  <td><span class="input">
+/* e1*e2=det(P2.P2')=PI */<br>
+PI:factor(determinant(transpose(P2).P2));
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_19.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+PI &gt;= 0 for g&gt;0, k&gt;0<br>
+True. So PI = |PI|<br>
+<br>
+[[<br>
+&nbsp;Wolfram Alpha query:<br>
+&nbsp;(g*k-g^2-1)^4/(g*k+g^2+1)^4&gt;=0; g&gt;0, k&gt;0<br>
+]]<br>
+<br>
+PI &lt; 1 for all g&gt;0, k&gt;0<br>
+True.<br>
+<br>
+[[<br>
+&nbsp;(g*k-g^2-1)^4/(g*k+g^2+1)^4&lt;1; g&gt;0, k&gt;0<br>
+]]<br>
+
+</p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+Need both eigenvalues of P2.P2' to be &lt; 1. which is implied by |PI| &lt; 1 AND |SIGMA| &lt; 1 + |PI|.<br>
+<br>
+Want |SIGMA| &lt; 1 + |PI|. so want |SIGMA| -1 - |PI| &lt; 0. 
+</p>
+
+
+<!-- Code cell -->
+
+
+<p></p><table><tbody><tr><td>
+  <span class="prompt">
+(%i49) 
+  </span></td>
+  <td><span class="input">
+factor(SIGMA - 1 - PI);
+  </span></td>
+</tr></tbody></table>
+  <br>
+  <img alt="Result" src="./SimperSVF_BIBO_Analysis_files/SimperSVF_BIBO_Analysis_20.png">
+<p></p>
+
+
+<!-- Text cell -->
+
+
+<p class="comment">
+|SIGMA| -1 - |PI| &lt; 0<br>
+True for all g&gt;0, k&gt;0<br>
+<br>
+[[<br>
+&nbsp;-(64*g^4*k^2)/(g*k+g^2+1)^4 &lt; 0; g&gt;0, k&gt;0<br>
+]]<br>
+<br>
+Therefore the filter is time-varying BIBO stable for update every second sample.<br>
+<br>
++++
+</p>
+
+ <hr>
+ <small> Created with <a href="http://wxmaxima.sourceforge.net/">wxMaxima</a>.</small>
+
+ 
+
+</body></html>
